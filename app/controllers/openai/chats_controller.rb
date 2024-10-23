@@ -214,10 +214,10 @@ class Openai::ChatsController < ApplicationController
     render json: { message: "セッションがリセットされました。" }
   end
 
-  # 面接内容を要約して保存するアクション
+  # 面接内容を要約してSlackに送信するアクション
   def summarize_and_save
     # ユーザー名を取得
-    user_name = session[:user_name]
+    user_name = session[:user_name] || "お客様"
 
     # 会話履歴を取得
     messages = session[:messages] || []
@@ -243,7 +243,7 @@ class Openai::ChatsController < ApplicationController
 
     response = client.chat(
       parameters: {
-        model: "gpt-4o",
+        model: "gpt-4",
         messages: [
           { role: "system", content: "あなたは優秀な要約作成者です。" },
           { role: "user", content: summary_prompt }
@@ -260,12 +260,28 @@ class Openai::ChatsController < ApplicationController
     interview = Interview.create(user_name: user_name, summary: summary)
 
     if interview.persisted?
+      # Slackに送信
+      send_to_slack(user_name, summary)
+
       # 保存が成功した場合
-      render json: { message: "面接内容が保存されました。", summary: summary }
+      render json: { message: "面接内容が保存され、Slackに送信されました。", summary: summary }
     else
       # 保存が失敗した場合
       render json: { error: "面接内容の保存に失敗しました。" }, status: :unprocessable_entity
     end
+  end
+
+  private
+
+  # Slackにメッセージを送信するメソッド
+  def send_to_slack(user_name, summary)
+    webhook_url ='https://hooks.slack.com/triggers/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' # Webhook URLを環境変数に設定
+
+    payload = {
+      text: "新しい面接内容が完了しました。\n*ユーザー名*: #{user_name}\n*要約*:\n#{summary}"
+    }
+
+    HTTParty.post(webhook_url, body: payload.to_json, headers: { 'Content-Type' => 'application/json' })
   end
 
 end
