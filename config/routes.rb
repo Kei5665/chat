@@ -14,6 +14,9 @@ Rails.application.routes.draw do
     post '/reset_session', to: 'chats#reset_session'
     # ユーザー名を設定するルートを追加
     post '/set_name', to: 'chats#set_name'
+    # 面接内容を保存
+    post '/summarize_and_save', to: 'chats#summarize_and_save'
+
   end
   # Defines the root path route ("/")
   # root "posts#index"

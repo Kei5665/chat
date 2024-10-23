@@ -20,7 +20,8 @@
   <form id="chat-form">
     <input type="text" id="message-input" placeholder="メッセージを入力" />
     <button type="submit">送信</button>
-    <button type="button" id="reset-button">リセット</button>
+    <button type="button" id="reset-button">やり直す</button>
+    <button type="button" id="end-interview-button">面接を終了する</button>
   </form>
 </div>
 
@@ -147,3 +148,50 @@ nameForm.addEventListener("submit", async (e) => {
     }
   });
 });</script>
+<script>
+const endInterviewButton = document.getElementById("end-interview-button");
+
+endInterviewButton.addEventListener("click", async () => {
+  if (confirm("面接を終了して内容を保存しますか？")) {
+    try {
+      const response = await fetch("/openai/summarize_and_save", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error("サーバーエラーが発生しました。");
+      }
+
+      const data = await response.json();
+
+      alert(data.message);
+
+      // 要約を表示（任意）
+      const summaryElem = document.createElement("p");
+      summaryElem.textContent = `要約: ${data.summary}`;
+      messagesContainer.appendChild(summaryElem);
+
+      // 必要に応じて、チャットをリセットまたは終了
+      // ここでは、セッションをリセットして名前入力に戻る例を示します
+      await fetch("/openai/clear_session", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+        }
+      });
+
+      messagesContainer.innerHTML = "";
+      chatContainer.style.display = "none";
+      nameContainer.style.display = "block";
+      userName = "";
+    } catch (error) {
+      alert(error.message);
+    }
+  }
+});
+</script>

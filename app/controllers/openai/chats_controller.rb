@@ -82,7 +82,7 @@ class Openai::ChatsController < ApplicationController
 
     response = client.chat(
       parameters: {
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: messages,
         max_tokens: 1000,
         top_p: 1.0,
@@ -190,7 +190,7 @@ class Openai::ChatsController < ApplicationController
     # OpenAI APIにリクエスト
     response = client.chat(
       parameters: {
-        model: "gpt-4",
+        model: "gpt-4o",
         messages: messages,
         temperature: 0.5,  # 応答の一貫性を高めるために低めに設定
         max_tokens: 1000,
@@ -213,4 +213,59 @@ class Openai::ChatsController < ApplicationController
     reset_session  # セッションを完全にリセット
     render json: { message: "セッションがリセットされました。" }
   end
+
+  # 面接内容を要約して保存するアクション
+  def summarize_and_save
+    # ユーザー名を取得
+    user_name = session[:user_name]
+
+    # 会話履歴を取得
+    messages = session[:messages] || []
+
+    # 会話履歴をテキストに変換
+    conversation = messages.map do |msg|
+      role = msg[:role] == "assistant" ? "AI" : user_name
+      "#{role}: #{msg[:content]}"
+    end.join("\n")
+
+    # 要約を生成するためのプロンプトを作成
+    summary_prompt = <<~PROMPT
+      以下はユーザーとAIの会話です。この会話の要約を作成してください。
+
+      会話内容:
+      #{conversation}
+
+      要約:
+    PROMPT
+
+    # GPT APIを使用して要約を生成
+    client = OpenAI::Client.new(access_token: ENV['OPENAI_API_KEY'])
+
+    response = client.chat(
+      parameters: {
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: "あなたは優秀な要約作成者です。" },
+          { role: "user", content: summary_prompt }
+        ],
+        temperature: 0.5,
+        max_tokens: 500,
+      }
+    )
+
+    # 要約文を取得
+    summary = response['choices'].first['message']['content'].strip
+
+    # データベースに保存
+    interview = Interview.create(user_name: user_name, summary: summary)
+
+    if interview.persisted?
+      # 保存が成功した場合
+      render json: { message: "面接内容が保存されました。", summary: summary }
+    else
+      # 保存が失敗した場合
+      render json: { error: "面接内容の保存に失敗しました。" }, status: :unprocessable_entity
+    end
+  end
+
 end
