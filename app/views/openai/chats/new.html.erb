@@ -1,0 +1,53 @@
+<h1>AIとのチャット</h1>
+
+<div id="chat-container">
+  <div id="messages"></div>
+
+  <form id="chat-form">
+    <input type="text" id="message-input" placeholder="メッセージを入力" />
+    <button type="submit">送信</button>
+  </form>
+</div>
+
+  <!-- スタートボタン -->
+  <form id="start-form" action="/openai/chats/reset" method="post">
+    <input type="submit" value="スタート">
+  </form>
+
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("chat-form");
+    const messagesContainer = document.getElementById("messages");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userMessage = document.getElementById("message-input").value;
+      
+      // ユーザーのメッセージを表示
+      const userMessageElem = document.createElement("p");
+      userMessageElem.textContent = `ユーザー: ${userMessage}`;
+      messagesContainer.appendChild(userMessageElem);
+
+      // AIからの応答を取得
+      const response = await fetch("/openai/chats", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({ message: userMessage })
+      });
+      
+      const data = await response.json();
+
+      // AIの応答を表示
+      const aiMessageElem = document.createElement("p");
+      aiMessageElem.textContent = `AI: ${data.message}`;
+      messagesContainer.appendChild(aiMessageElem);
+
+      // フォームをリセット
+      document.getElementById("message-input").value = "";
+    });
+  });
+</script>
