@@ -1,53 +1,149 @@
-<h1>AIとのチャット</h1>
+<h1>即決エージェント</h1>
 
-<div id="chat-container">
+<!-- 名前入力フォームを追加 -->
+<div id="name-container">
+  <form id="name-form">
+    <input type="text" id="name-input" placeholder="お名前を入力してください" required />
+    <button type="submit">開始</button>
+  </form>
+</div>
+
+<!-- ローディングメッセージ -->
+<div id="loading-message" style="display: none;">
+  <p>少々お待ちください...</p>
+</div>
+
+<!-- チャットコンテナを非表示にしておく -->
+<div id="chat-container" style="display: none;">
   <div id="messages"></div>
 
   <form id="chat-form">
     <input type="text" id="message-input" placeholder="メッセージを入力" />
     <button type="submit">送信</button>
+    <button type="button" id="reset-button">リセット</button>
   </form>
 </div>
 
-  <!-- スタートボタン -->
-  <form id="start-form" action="/openai/chats/reset" method="post">
-    <input type="submit" value="スタート">
-  </form>
-
 
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    const form = document.getElementById("chat-form");
-    const messagesContainer = document.getElementById("messages");
+document.addEventListener("DOMContentLoaded", () => {
+ const nameForm = document.getElementById("name-form");
+const nameInput = document.getElementById("name-input");
+const nameContainer = document.getElementById("name-container");
+const chatContainer = document.getElementById("chat-container");
+const loadingMessage = document.getElementById("loading-message");
 
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const userMessage = document.getElementById("message-input").value;
-      
-      // ユーザーのメッセージを表示
-      const userMessageElem = document.createElement("p");
-      userMessageElem.textContent = `ユーザー: ${userMessage}`;
-      messagesContainer.appendChild(userMessageElem);
+const form = document.getElementById("chat-form");
+const messagesContainer = document.getElementById("messages");
+const resetButton = document.getElementById("reset-button");
 
-      // AIからの応答を取得
-      const response = await fetch("/openai/chats", {
+// ユーザー名を保存する変数
+let userName = "";
+
+// 名前フォームの送信イベント
+nameForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  userName = nameInput.value.trim();
+
+  if (userName === "") {
+    alert("お名前を入力してください。");
+    return;
+  }
+
+  // 名前入力フォームを非表示にし、ローディングメッセージを表示
+  nameContainer.style.display = "none";
+  loadingMessage.style.display = "block";
+
+  try {
+    // サーバーにユーザー名を送信してセッションに保存し、初回のAIメッセージを取得
+    const response = await fetch("/openai/set_name", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ name: userName })
+    });
+
+    if (!response.ok) {
+      throw new Error("サーバーエラーが発生しました。");
+    }
+
+    const data = await response.json();
+
+    // ローディングメッセージを非表示にし、チャットコンテナを表示
+    loadingMessage.style.display = "none";
+    chatContainer.style.display = "block";
+
+    // AIの初回メッセージを表示
+    const aiMessageElem = document.createElement("p");
+    aiMessageElem.textContent = `AI: ${data.message}`;
+    messagesContainer.appendChild(aiMessageElem);
+
+    // 名前入力欄をリセット
+    nameInput.value = "";
+  } catch (error) {
+    alert(error.message);
+
+    // エラーが発生した場合、名前入力フォームを再表示
+    loadingMessage.style.display = "none";
+    nameContainer.style.display = "block";
+
+  }
+});
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const userMessage = document.getElementById("message-input").value;
+
+    // ユーザーのメッセージを表示
+    const userMessageElem = document.createElement("p");
+    userMessageElem.textContent = `${userName}: ${userMessage}`;
+    messagesContainer.appendChild(userMessageElem);
+
+    // AIからの応答を取得
+    const response = await fetch("/openai/chats", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
+      },
+      body: JSON.stringify({ message: userMessage })
+    });
+
+    const data = await response.json();
+
+    // AIの応答を表示
+    const aiMessageElem = document.createElement("p");
+    aiMessageElem.textContent = `AI: ${data.message}`;
+    messagesContainer.appendChild(aiMessageElem);
+
+    // フォームをリセット
+    document.getElementById("message-input").value = "";
+  });
+
+  // リセットボタンのイベントリスナーを追加
+  resetButton.addEventListener("click", async () => {
+    if (confirm("会話をリセットしますか？")) {
+      // サーバーにセッションリセットのリクエストを送信
+      await fetch("/openai/clear_session", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({ message: userMessage })
+        }
       });
-      
-      const data = await response.json();
 
-      // AIの応答を表示
-      const aiMessageElem = document.createElement("p");
-      aiMessageElem.textContent = `AI: ${data.message}`;
-      messagesContainer.appendChild(aiMessageElem);
+      // メッセージ表示エリアをクリア
+      messagesContainer.innerHTML = "";
 
-      // フォームをリセット
-      document.getElementById("message-input").value = "";
-    });
+      // チャットコンテナを非表示にし、名前入力フォームを再表示
+      chatContainer.style.display = "none";
+      nameContainer.style.display = "block";
+
+      // ユーザー名をリセット
+      userName = "";
+      nameInput.value = "";
+    }
   });
-</script>
+});</script>

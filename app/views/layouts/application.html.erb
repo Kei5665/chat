@@ -15,6 +15,54 @@
     <link rel="apple-touch-icon" href="/icon.png">
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
+
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+
+      #chat-container, #name-container {
+        max-width: 600px;
+        margin: 0 auto;
+      }
+
+      #messages {
+        border: 1px solid #ccc;
+        padding: 10px;
+        height: 500px;
+        overflow-y: scroll;
+        margin-bottom: 10px;
+      }
+
+      #messages p {
+        margin: 5px 0;
+      }
+
+      #chat-form, #name-form {
+        display: flex;
+      }
+
+      #message-input, #name-input {
+        flex: 1;
+        padding: 10px;
+        font-size: 16px;
+      }
+
+      #chat-form button, #name-form button {
+        padding: 10px 20px;
+        font-size: 16px;
+      }
+
+      #reset-button {
+        margin-left: 10px;
+      }
+      #loading-message {
+        text-align: center;
+        font-size: 18px;
+        margin-top: 20px;
+      }
+    </style>
   </head>
 
   <body>

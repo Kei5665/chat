@@ -10,7 +10,10 @@ Rails.application.routes.draw do
   get "manifest" => "rails/pwa#manifest", as: :pwa_manifest
   namespace :openai do
     resources :chats
-    post 'chats/reset', to: 'chats#reset'
+    # セッションリセット用のルートを追加
+    post '/reset_session', to: 'chats#reset_session'
+    # ユーザー名を設定するルートを追加
+    post '/set_name', to: 'chats#set_name'
   end
   # Defines the root path route ("/")
   # root "posts#index"
